@@ -1,0 +1,9 @@
+[package]
+name = "Bicopter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bitvec = { version = "1.0.0", features = ["serde"]}
+rand = { version = "0.8.5", features = ["std"]}
+rand_chacha = "0.3.1"
