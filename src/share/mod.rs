@@ -6,7 +6,7 @@ pub mod xor_sharing;
 //pub(crate) mod util;
 
 //定义Bitvec数据类型，MSB
-pub type BitStorage = u8;
+pub type BitStorage = u64;
 pub type BitSlice<T = BitStorage> = bitvec::slice::BitSlice<T,Msb0>;
 pub type BitVec<T = BitStorage> = bitvec::vec::BitVec<T,Msb0>;
 
@@ -91,4 +91,5 @@ fn test2() { //测试每个bit只存成1bit长的vec
     println!("{:?}", bits);
     bits.push(true);
     println!("{:?}", bits);
+    let mut bits2 = bitvec![0, 0, 0, 0, 0,1];
 }
