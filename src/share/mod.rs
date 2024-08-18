@@ -1,4 +1,4 @@
-use bitvec::order::{Lsb0, Msb0};
+use bitvec::order::Msb0;
 use bitvec;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -85,6 +85,7 @@ fn test_bit_vector() { //每个bit都存成u8的vec
 
 }
 
+/*
 #[test]
 fn test2() { //测试每个bit只存成1bit长的vec
     use bitvec::prelude::bitvec;
@@ -94,3 +95,4 @@ fn test2() { //测试每个bit只存成1bit长的vec
     println!("{:?}", bits);
     let mut bits2 = bitvec![0, 0, 0, 0, 0,1];
 }
+ */

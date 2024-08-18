@@ -1,9 +1,10 @@
-use rand::{Rng};
+use rand::Rng;
 use rand_chacha::ChaChaRng;
 use rand_chacha::rand_core::SeedableRng;
-use crate::share::{BitStorage,BitVec};
+use crate::share::{CONST_P, BitStorage,BitVec};
 pub mod bitvec_arithmetic;
 
+//定义一个包含符号和原码的结构体
 #[derive(Debug)]
 pub struct SignTrueform{
     sign: bool,
@@ -29,25 +30,23 @@ impl SignTrueform {
         self.sign
     }
 }
-//从符号和源码得到补码的bitvec
+//从符号和原码得到补码的bitvec
 pub fn signtrue_tobitvec(sign: bool, trueform: BitStorage)->BitVec{
     let signtrueform = SignTrueform::new(sign, trueform);
     let bitvec=signtrueform_tobitvec(&signtrueform);
     bitvec
 }
+//从SignTrueform(符号和原码)得到补码的bitvec
 pub fn signtrueform_tobitvec(signtrueform: &SignTrueform)->BitVec{
     let complement_vec = vec![signtrueform_to_complement(signtrueform)];
     let bitvec = BitVec::from_vec(complement_vec);
     bitvec
 }
-//返回源码和只包含一个元素的补码vec(u64)，用于bitvec生成
-
-
-//从SignTrueform(符号和源码)得到u64补码
-pub fn signtrueform_to_complement(sign_x: &SignTrueform) ->u64{
+//从SignTrueform(符号和原码)得到补码的u64
+pub fn signtrueform_to_complement(sign_x: &SignTrueform) ->BitStorage{
     if sign_x.sign {
-        let par_p :u128 = 2u128.pow(64);
-        let complement = (par_p-(sign_x.trueform as u128)) as BitStorage;
+        //let par_p :u128 = 2u128.pow(64);
+        let complement = (CONST_P-(sign_x.trueform as u128)) as BitStorage;
         complement
     }
     else {
@@ -55,66 +54,55 @@ pub fn signtrueform_to_complement(sign_x: &SignTrueform) ->u64{
         complement
         }
 }
-//从bitvec的补码得到SignTrueform(符号和源码)
-pub fn bitvec_tosigntrueform(complement_bitvec: &BitVec<u64>)->SignTrueform{
+//从bitvec格式的补码得到SignTrueform(符号和原码)
+pub fn bitvec_tosigntrueform(complement_bitvec: &BitVec<BitStorage>)->SignTrueform{
     let complement_vec = complement_bitvec.clone().into_vec();
     let sign_true = vec_tou64(&complement_vec);
     sign_true
 } 
-//从u64的vec得到SignTrueform(符号和源码)
-pub fn vec_tou64(complement_vec: &Vec<u64>)->SignTrueform{
+//从BitStorage(u64)的vec得到SignTrueform(符号和原码)
+pub fn vec_tou64(complement_vec: &Vec<BitStorage>)->SignTrueform{
     let complement = complement_vec[0];
     let sign_true = u64_tosigntrue(complement);
     sign_true
 } 
-//从u64的补码得到SignTrueform(符号和源码)
-pub fn u64_tosigntrue(complement: u64)->SignTrueform{
-    let par_p :u128 = 2u128.pow(64);
+//从BitStorage(u64)的补码得到SignTrueform(符号和原码)
+pub fn u64_tosigntrue(complement: BitStorage)->SignTrueform{
+    let par_p :u128 = CONST_P;
     let absolute_value = complement;
     let neg= (absolute_value as u128)>par_p/2;
     if neg {
         let x = par_p-(absolute_value as u128);
-        SignTrueform::new(neg, x as u64)
+        SignTrueform::new(neg, x as BitStorage)
     }
     else {
         SignTrueform::new(neg, absolute_value)
     }
 }
 
-
-pub fn gen_random_u64_complement_vec(lx: usize, neg: bool)->(BitStorage, Vec<BitStorage>){
-    let (x,complement) = gen_random_u64_complement(lx, neg);
-    let complement_vec = vec![complement];
-    (x, complement_vec)
-}
-
-//生成随机u64源码和补码
-pub fn gen_random_u64_complement(lx: usize, neg: bool)->(BitStorage, BitStorage){
+//生成随机BitStorage(u64)格式的原码x和补码complement
+pub fn gen_random_u64_complement_vec(lx: usize, neg: bool)->SignTrueform{
     let mut rng = ChaChaRng::from_entropy(); 
-    let x_max = 2u64.pow(lx.try_into().unwrap()); //这里是x的最大值，取决于lx的大小,暂且认为不大于64位，之后要改
+    let x_max = 2u64.pow(lx.try_into().unwrap()); //这里是x的最大值，取决于lx的大小,暂且认为不大于64位
     let x= rng.gen_range(0..x_max);
-    let complement = signtrueform_to_complement(&SignTrueform::new(neg, x ));
-    (x,complement) //x是绝对值，plaintext是补码（放到了vec里）
+    let sign_truex: SignTrueform = SignTrueform::new(neg, x );
+    sign_truex
 }
+
+
 #[test]
 fn test1(){
+    let sign_trueformx = gen_random_u64_complement_vec(8, false);
+    println!("plaintext: \n {:?}, {:?}", sign_trueformx, signtrueform_to_complement(&sign_trueformx));
+    println!("plaintext: \n neg: {:?}", sign_trueformx);
 
-    let (abs, numvec) = gen_random_u64_complement_vec(8, false);
-    println!("plaintext: \n {:?}, {:?}", abs, numvec);
-    let sign_true = vec_tou64(&numvec);
-    println!("plaintext: \n neg: {:?}", sign_true);
+    let sign_trueformx = gen_random_u64_complement_vec(8, true);
+    println!("plaintext: \n {:?}, {:?}", sign_trueformx, signtrueform_to_complement(&sign_trueformx));
+    println!("plaintext: \n neg: {:?}", sign_trueformx);
 
-    let (abs, numvec) = gen_random_u64_complement_vec(8, true);
-    println!("plaintext: \n {:?}, {:?}", abs, numvec);
-    let sign_true = vec_tou64(&numvec);
-    println!("plaintext: \n neg: {:?}", sign_true);
-
-    let (abs, numvec) = gen_random_u64_complement_vec(8, true);
-    println!("plaintext: \n {:?}, {:?}", abs, numvec);
-    let num_bitvec = BitVec::from_vec(numvec);
-    //print!("length {:?}", num_bitvec.len());
-    let sign_true = bitvec_tosigntrueform(&num_bitvec);
-    println!("plaintext: \n neg: {:?}", sign_true);
+    let sign_trueformx = gen_random_u64_complement_vec(8, true);
+    println!("plaintext: \n {:?}, {:?}", sign_trueformx, signtrueform_to_complement(&sign_trueformx));
+    println!("plaintext: \n neg: {:?}", sign_trueformx);
     
 
 }

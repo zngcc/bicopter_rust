@@ -1,16 +1,22 @@
-use Bicopter::share::{BitVec,Sharing};
-use Bicopter::share::xor_sharing::XorSharing;
-use Bicopter::utils::gen_random_u64_complement_vec;
-use Bicopter::party::{BicopterParty, BicopterParty2};
+use bicopter::share::{BitVec,Sharing};
+use bicopter::share::xor_sharing::XorSharing;
+use bicopter::utils::{gen_random_u64_complement_vec,signtrueform_tobitvec,signtrueform_to_complement};
+use bicopter::party::{BicopterParty, BicopterParty2};
 
 fn main() {
     let (lx, neg) = (8, true); //lx和符号位
-    let (x, plaintext) = gen_random_u64_complement_vec(lx, neg);
+    
+    //生成随机明文
+    let sign_trueformx = gen_random_u64_complement_vec(lx, neg);
+    //或者自定明文
+    //use bicopter::utils::SignTrueform;
+    //let sign_trueformx = SignTrueform::new(neg, 15);
 
-    println!("plaintext: \n {} {:?}  {:?}", neg, x,  plaintext[0]); //符号 原码 补码
-    let plain_vex = BitVec::from_vec(plaintext);
-    println!("x_vec: \n {}", BitVec::from_vec(vec!{x})); //原码vec
-    println!("plain_vex: \n {}", plain_vex);        //补码vec
+
+    println!("正数?: {} 原码：{:?} 补码：{:?}", !neg, sign_trueformx.get_trueform(),  signtrueform_to_complement(&sign_trueformx)); //符号 原码 补码
+    let plain_vex = signtrueform_tobitvec(&sign_trueformx);
+    println!("x_vec: \n {}", BitVec::from_vec(vec!{sign_trueformx.get_trueform()})); //原码对应的bitvec
+    println!("plain_vex: \n {}", plain_vex);        //补码对应的bitvec
 
     let randseed: [u8; 32] = [0u8;32];
     let mut xorsharing_generator = XorSharing::default();
@@ -28,7 +34,7 @@ fn main() {
     println!("Party2接收w");
 
     let is_positive = party2.check_w(lx);
-    println!("是否为正数 {}", is_positive);
+    println!("正数?: {}", is_positive);
 }
 
 

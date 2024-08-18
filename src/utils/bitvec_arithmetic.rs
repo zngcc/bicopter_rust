@@ -1,9 +1,7 @@
-use bitvec::order::{Lsb0, Msb0};
-use bitvec;
 use crate::share::{BitStorage, BitVec,CONST_P};
 use crate::utils::{bitvec_tosigntrueform,SignTrueform,signtrueform_tobitvec};
-use std::ops::{Add, Mul};
-//bitvec补码减法
+//use std::ops::{Add, Mul};
+//bitvec格式的补码加法
 pub fn bitvec_add(lhs: & BitVec, rhs: &BitVec) -> BitVec {
     fn bitvec_add_self(lhs: &mut BitVec, rhs: &BitVec) {
         fn add_with_carry(a: bool, b: bool, carry: bool) -> (bool, bool) {
@@ -24,10 +22,7 @@ pub fn bitvec_add(lhs: & BitVec, rhs: &BitVec) -> BitVec {
 }
 
 
-//bitvec补码相加
-
-
-//bitvec的补码相乘
+//bitvec格式的补码乘法
 pub fn bitvec_mult(num_bitvec1: & BitVec, num_bitvec2: &BitVec) -> BitVec {
     let sign_true1 = bitvec_tosigntrueform(num_bitvec1);
     let sign_true2 = bitvec_tosigntrueform(num_bitvec2);
@@ -38,18 +33,14 @@ pub fn bitvec_mult(num_bitvec1: & BitVec, num_bitvec2: &BitVec) -> BitVec {
     let result = signtrueform_tobitvec(&signtrueform_result);
     result
 }
-//SignTrueform(符号和源码)相乘
+//SignTrueform(符号和源码)格式的补码乘法
 pub fn complement_mult(signtrueform1: & SignTrueform, signtrueform2: &SignTrueform)->SignTrueform{
     let product_abs = ((signtrueform1.trueform as u128) * (signtrueform2.trueform as u128)) % CONST_P;
     let sign = signtrueform1.sign ^ signtrueform2.sign;
-    let result = SignTrueform::new(sign, product_abs as u64);
+    let result = SignTrueform::new(sign, product_abs as BitStorage);
     result
 }
 
-pub fn bitvec_addinv(){
-
-
-}
 
 pub fn bitvec_sub(lhs: &mut BitVec, rhs: &BitVec) {
     let mut borrow = false;
@@ -73,15 +64,15 @@ pub fn bitvec_sub(lhs: &mut BitVec, rhs: &BitVec) {
 
 #[test]
 fn test2(){
-    use crate::utils::{gen_random_u64_complement_vec,vec_tou64}; 
-    let (_,mut num1) = gen_random_u64_complement_vec(8, false);
-    println!("plaintext: \n {:?}", vec_tou64(&num1));
-    let mut num1_vec = BitVec::from_vec(num1);
+    use crate::utils::{gen_random_u64_complement_vec,vec_tou64,signtrueform_to_complement}; 
+    let sign_trueformx1 = gen_random_u64_complement_vec(8, false);
+    println!("plaintext: \n {:?}", signtrueform_to_complement(&sign_trueformx1));
+    let num1_vec = signtrueform_tobitvec(&sign_trueformx1);
     println!("vec: \n {:?}", num1_vec);
     
-    let (_,num2) = gen_random_u64_complement_vec(8, true);
-    println!("plaintext: \n {:?}", vec_tou64(&num2));
-    let mut num2_vec = BitVec::from_vec(num2);
+    let sign_trueformx2 = gen_random_u64_complement_vec(8, true);
+    println!("plaintext: \n {:?}", signtrueform_to_complement(&sign_trueformx2));
+    let num2_vec = signtrueform_tobitvec(&sign_trueformx2);
     println!("vec: \n {:?}", num2_vec);
 
     //减法测试
