@@ -18,23 +18,32 @@ fn main() {
     println!("x_vec: \n {}", BitVec::from_vec(vec!{sign_trueformx.get_trueform()})); //原码对应的bitvec
     println!("plain_vex: \n {}", plain_vex);        //补码对应的bitvec
 
-    let randseed: [u8; 32] = [0u8;32];
+    let randseed01: [u8; 32] = [1u8;32];
+    let randseed02: [u8; 32] = [2u8;32];
+    let randseed12: [u8; 32] = [12u8;32];
     let mut xorsharing_generator = XorSharing::default();
-    let mut party0 = BicopterParty::new(0,randseed);
-    let mut party1 = BicopterParty::new(1,randseed);
+    let mut party0 = BicopterParty::new(0,randseed01,randseed02);
+    let mut party1 = BicopterParty::new(1,randseed01,randseed12);
+    let mut party2 = BicopterParty2::new(randseed02,randseed12);
 
+//DRelu
     let [rand_bits_vec, masked_input] = xorsharing_generator.share(plain_vex);
     party0.init_u_v(rand_bits_vec, lx);
     party1.init_u_v(masked_input,lx);
     println!("生成u v w");
 
-    let mut party2 = BicopterParty2::new();
+    
     party2.receive_w0(party0.get_wstore());
     party2.receive_w1(party1.get_wstore());
     println!("Party2接收w");
 
     let is_positive = party2.check_w(lx);
     println!("正数?: {}", is_positive);
+//ReLU
+    party0.gen_abc();
+    party1.gen_abc();
+    party2.gen_abc();
+    
 }
 
 
