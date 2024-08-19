@@ -1,10 +1,10 @@
 use bicopter::share::{BitVec,Sharing};
 use bicopter::share::xor_sharing::XorSharing;
-use bicopter::utils::{gen_random_u64_complement_vec,signtrueform_tobitvec,signtrueform_to_complement};
+use bicopter::utils::{gen_random_u64_complement_vec,signtrueform_tobitvec,signtrueform_to_complement,bitvec_tosigntrueform};
 use bicopter::party::{BicopterParty, BicopterParty2};
 
 fn main() {
-    let (lx, neg) = (8, true); //lx和符号位
+    let (lx, neg) = (8, false); //lx和符号位
     
     //生成随机明文
     let sign_trueformx = gen_random_u64_complement_vec(lx, neg);
@@ -38,11 +38,35 @@ fn main() {
     println!("Party2接收w");
 
     let is_positive = party2.check_w(lx);
-    println!("正数?: {}", is_positive);
+    println!("DReLU?: {:?}", bitvec_tosigntrueform(&is_positive).get_trueform());
 //ReLU
+    println!("party0 生成 a0 b0 c0 d0, party1 生成 a1 b1 d1");
     party0.gen_abc();
     party1.gen_abc();
+    println!("传输d0 d1");
+    let d0 = party0.get_d();
+    let d1 = party1.get_d();
+    party1.receive_d(d0);
+    party0.receive_d(d1);
+
+
+    println!("party2 生成 a0 b0 c0, a1 b1, c1, e");
     party2.gen_abc();
+    party2.gen_e();
+    let e = party2.get_e();
+    let c1 = party2.get_c1();
+    println!("传输 e, c1");
+    party0.receive_e(e.clone());
+    party1.receive_e(e);
+    party1.receive_c(c1);
+
+    party0.compute_ReLU();
+    party1.compute_ReLU();
+    let relu0 = party0.get_relu();
+    let relu1 = party1.get_relu();
+    let reconstructed_relu = xorsharing_generator.reconstruct([relu0, relu1]);
+    println!("ReLu(x): \n{:?}",  reconstructed_relu);
+
     
 }
 

@@ -131,6 +131,7 @@ impl BicopterParty {
     pub fn get_rdrelui(&self, random_index: usize) -> BitVec{self.r_drelu_store.get(&random_index).unwrap().clone()}
     pub fn get_wi(&self, shift_index: usize) -> BitVec{self.w_store.get(&shift_index).unwrap().clone()}
     pub fn get_wstore(&self) -> HashMap<usize, BitVec>{self.w_store.clone()}
+    //0:[a] 1:[b] 2:[c] 3:[d] 7:d_receive 8:e 9:DReLu(x)'
     pub fn gen_abc(&mut self){
         if self.party_id ==0{        
             for i in 0..3{
@@ -146,14 +147,15 @@ impl BicopterParty {
         self.abc_store.insert(3, _d);
     }
     pub fn get_d(&self) -> BitVec{self.abc_store.get(&3).unwrap().clone()}
+    pub fn get_relu(&self) -> BitVec{self.abc_store.get(&10).unwrap().clone()}
     pub fn receive_d(&mut self, _d_in: BitVec) {self.abc_store.insert(7, _d_in);}
     pub fn receive_c(&mut self, _c_in: BitVec) {self.abc_store.insert(2, _c_in);}
     pub fn receive_e(&mut self, e_in: BitVec) {self.abc_store.insert(8, e_in);}
     //0:[a] 1:[b] 2:[c] 3:[d] 7:d_receive 8:e 9:DReLu(x)'
     pub fn receive_abc(&mut self, abc_in: BitVec, index: usize){self.abc_store.insert(index, abc_in);}
-    pub fn get_abc(&self, index: usize) -> BitVec{self.w_store.get(&index).unwrap().clone()}
+    pub fn get_abc(&self, index: usize) -> BitVec{self.abc_store.get(&index).unwrap().clone()}
 
-    //0:[a] 1:[b] 2:[c] 7:d1 8:e 9:DReLu(x)' 10:ReLU
+    //0:[a] 1:[b] 2:[c] 3:[d] 7:d_receive 8:e 9:DReLu(x)'
     pub fn compute_ReLU(&mut self){
         //relu = (1-2t)
         let t_vec = signtrue_tobitvec(false, self.t) ;
@@ -215,13 +217,13 @@ impl BicopterParty2 {
             let reconstructed_wi =bitvec_tosigntrueform( &xorsharing_generator.reconstruct([party0_wi, party1_wi]));
             if reconstructed_wi.get_trueform() == 0 {
                 let drelu_prime = signtrue_tobitvec(false,1);
-                self.abc_store.insert(7, drelu_prime.clone());
+                self.abc_store.insert(9, drelu_prime.clone());
                 return drelu_prime
             }
         }
         //没有零 不是正数
         let drelu_prime = signtrue_tobitvec(false,0);
-        self.abc_store.insert(7, drelu_prime.clone());
+        self.abc_store.insert(9, drelu_prime.clone());
         drelu_prime
     }
     fn gen_randomvec(&mut self, rng_id: usize) -> Vec<BitStorage>{
@@ -253,13 +255,14 @@ impl BicopterParty2 {
         }
         //c1 = (a0+a1)(b0+b1) - c0
         let c1 = bitvec_sub(&bitvec_mult(
-        &bitvec_add(&self.abc_store.get(&0).unwrap().clone(), &self.abc_store.get(&3).unwrap().clone()),
-        &bitvec_add(&self.abc_store.get(&1).unwrap().clone(), &self.abc_store.get(&4).unwrap().clone())),
+        &bitvec_add(&self.abc_store.get(&0).unwrap().clone(), &self.abc_store.get(&4).unwrap().clone()),
+        &bitvec_add(&self.abc_store.get(&1).unwrap().clone(), &self.abc_store.get(&5).unwrap().clone())),
         &self.abc_store.get(&2).unwrap().clone());
         self.abc_store.insert(6, c1);
-
-        let e = bitvec_sub(&self.abc_store.get(&7).unwrap().clone(),
-         &bitvec_add(&self.abc_store.get(&1).unwrap().clone(), &self.abc_store.get(&4).unwrap().clone()));
+    }
+    pub fn gen_e(&mut self){
+        let e = bitvec_sub(&self.abc_store.get(&9).unwrap().clone(),
+         &bitvec_add(&self.abc_store.get(&1).unwrap().clone(), &self.abc_store.get(&5).unwrap().clone()));
         self.abc_store.insert(8, e);
     }
     //0:a0 1:b0 2:c0 3:d0 4:a1 5:b1 6:c1 7:d1 8:e 9:DReLu(x)'
@@ -268,16 +271,61 @@ impl BicopterParty2 {
     pub fn get_c1(&self) -> BitVec{self.abc_store.get(&6).unwrap().clone()}
 }
 
+
 #[test]
-fn test_abc(){
-
-
-
-
+fn test_relu(){
 
 
 }
 
+/*
+fn test_abc(){
+    use crate::utils::{gen_random_u64_complement_vec,signtrueform_tobitvec,signtrueform_to_complement};
+
+    let (lx, neg) = (8, true); //lx和符号位
+    
+    //生成随机明文
+    let sign_trueformx = gen_random_u64_complement_vec(lx, neg);
+    //或者自定明文
+    //use bicopter::utils::SignTrueform;
+    //let sign_trueformx = SignTrueform::new(neg, 15);
+
+
+    println!("正数?: {} 原码：{:?} 补码：{:?}", !neg, sign_trueformx.get_trueform(),  signtrueform_to_complement(&sign_trueformx)); //符号 原码 补码
+    let plain_vex = signtrueform_tobitvec(&sign_trueformx);
+    println!("x_vec: \n {}", BitVec::from_vec(vec!{sign_trueformx.get_trueform()})); //原码对应的bitvec
+    println!("plain_vex: \n {}", plain_vex);        //补码对应的bitvec
+
+    let randseed01: [u8; 32] = [1u8;32];
+    let randseed02: [u8; 32] = [2u8;32];
+    let randseed12: [u8; 32] = [12u8;32];
+    let mut xorsharing_generator = XorSharing::default();
+    let mut party0 = BicopterParty::new(0,randseed01,randseed02);
+    let mut party1 = BicopterParty::new(1,randseed01,randseed12);
+    let mut party2 = BicopterParty2::new(randseed02,randseed12);
+    
+    //0:[a] 1:[b] 2:[c] 3:[d] 7:d_receive 8:e 9:DReLu(x)'
+    party0.gen_abc();
+    party1.gen_abc();
+    let b0 = party0.get_abc(1);
+    //println!("b0: {:?} \n", b0);
+    let b1 = party1.get_abc(1);
+    //println!("b1: {:?} \n", b1);
+    //0:a0 1:b0 2:c0 3:d0 4:a1 5:b1 6:c1 7:d1 8:e 9:DReLu(x)'
+    party2.gen_abc();
+    println!("bb: \n");
+    //println!("{:?} \n", party2.abc_store.clone());
+    let b02=party2.get_abc(1);
+    let b12=party2.get_abc(5);
+    println!("b0: \n{:?} \nb02: \n{:?} \n", b0,b02);
+    //assert_eq!(b0,b02);
+    println!("b1: \n{:?} \nb12: \n{:?} \n", b1,b12);
+    //assert_eq!(b1,b12);
+
+
+
+}
+*/
 
 
 /*
