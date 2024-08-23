@@ -1,7 +1,7 @@
 use rand::Rng;
 use rand_chacha::ChaChaRng;
 use rand_chacha::rand_core::SeedableRng;
-use crate::share::{CONST_P, BitStorage,BitVec};
+use crate::share::{CONST_P, BitStorage,MyBitVec};
 pub mod bitvec_arithmetic;
 
 //定义一个包含符号和原码的结构体
@@ -31,15 +31,15 @@ impl SignTrueform {
     }
 }
 //从符号和原码得到补码的bitvec
-pub fn signtrue_tobitvec(sign: bool, trueform: BitStorage)->BitVec{
+pub fn signtrue_tobitvec(sign: bool, trueform: BitStorage)->MyBitVec{
     let signtrueform = SignTrueform::new(sign, trueform);
     let bitvec=signtrueform_tobitvec(&signtrueform);
     bitvec
 }
 //从SignTrueform(符号和原码)得到补码的bitvec
-pub fn signtrueform_tobitvec(signtrueform: &SignTrueform)->BitVec{
+pub fn signtrueform_tobitvec(signtrueform: &SignTrueform)->MyBitVec{
     let complement_vec = vec![signtrueform_to_complement(signtrueform)];
-    let bitvec = BitVec::from_vec(complement_vec);
+    let bitvec = MyBitVec::from_vec(complement_vec);
     bitvec
 }
 //从SignTrueform(符号和原码)得到补码的u64
@@ -55,7 +55,7 @@ pub fn signtrueform_to_complement(sign_x: &SignTrueform) ->BitStorage{
         }
 }
 //从bitvec格式的补码得到SignTrueform(符号和原码)
-pub fn bitvec_tosigntrueform(complement_bitvec: &BitVec<BitStorage>)->SignTrueform{
+pub fn bitvec_tosigntrueform(complement_bitvec: &MyBitVec<BitStorage>)->SignTrueform{
     let complement_vec = complement_bitvec.clone().into_vec();
     let sign_true = vec_tou64(&complement_vec);
     sign_true

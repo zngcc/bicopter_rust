@@ -1,5 +1,4 @@
-use crate::share::{BitStorage,BitVec,Sharing};
-use bitvec::index;
+use crate::share::{BitStorage,MyBitVec,Sharing};
 use rand::Rng;
 use rand_chacha::ChaChaRng;
 use rand_chacha::rand_core::SeedableRng;
@@ -14,12 +13,12 @@ use crate::share::xor_sharing::XorSharing;
 pub struct BicopterParty {
     party_id: u8,
     rng: (ChaChaRng,ChaChaRng),
-    r_drelu_store: HashMap<usize, BitVec>,
-    abc_store: HashMap<usize, BitVec>,
-    v_store: HashMap<usize, BitVec>, // 0是v0，然后v1 v2 ..., 128是v*
-    u_store: HashMap<usize, BitVec>,// 0是u0，然后u1 u2 ..., 128是u*
-    w_store: HashMap<usize, BitVec>,
-    x_share: BitVec,
+    r_drelu_store: HashMap<usize, MyBitVec>,
+    abc_store: HashMap<usize, MyBitVec>,
+    v_store: HashMap<usize, MyBitVec>, // 0是v0，然后v1 v2 ..., 128是v*
+    u_store: HashMap<usize, MyBitVec>,// 0是u0，然后u1 u2 ..., 128是u*
+    w_store: HashMap<usize, MyBitVec>,
+    x_share: MyBitVec,
     t: BitStorage,
 }
 impl BicopterParty {
@@ -35,13 +34,13 @@ impl BicopterParty {
             v_store: HashMap::new(),
             u_store: HashMap::new(),
             w_store: HashMap::new(),
-            x_share: BitVec::new(), 
+            x_share: MyBitVec::new(), 
             t: 0,
         }}
 
     pub fn get_partyid(&self) -> u8 {self.party_id}
     //生成 u v 和 w
-    pub fn init_u_v(&mut self, x_share: BitVec, lx: usize){
+    pub fn init_u_v(&mut self, x_share: MyBitVec, lx: usize){
         self.x_share = x_share;
         let xshare_signtrueform = bitvec_tosigntrueform(&self.x_share);
         let (x_sign, x_trueform) = (xshare_signtrueform.get_sign().clone(), xshare_signtrueform.get_trueform().clone());
@@ -98,9 +97,9 @@ impl BicopterParty {
         };
         let rand_bits: Vec<BitStorage>= (0..1).map(|_| rng_to_use.gen_range(1..BitStorage::MAX)).collect();  //生成随机比特（这样比较慢，之后改成rand::distributions::Uniform）
         rand_bits}
-    fn gen_randombitvec(&mut self, rng_id: usize) -> BitVec{
+    fn gen_randombitvec(&mut self, rng_id: usize) -> MyBitVec{
         let rand_bits=self.gen_randomvec(rng_id);  //生成随机比特（这样比较慢，之后改成rand::distributions::Uniform）
-        let rand_bits_vec = BitVec::from_vec(rand_bits); //转成BitVec
+        let rand_bits_vec = MyBitVec::from_vec(rand_bits); //转成BitVec
         rand_bits_vec}
     //生成多个随机数并存储到RandomStore中
     fn gen_drelu_randombitvecs(&mut self, lx: usize){
@@ -113,24 +112,24 @@ impl BicopterParty {
     }
 
     //右移一位
-    pub fn rightshift1(&mut self, mut input:  BitVec)-> BitVec{
+    pub fn rightshift1(&mut self, mut input:  MyBitVec)-> MyBitVec{
         if input.is_empty() {return input; }
         input.shift_right(1);
         input.copy_within(1 .. 2,0); //开头补位
         input
     }
     //移位shift_num次并存储在uStore中 
-    fn shift_and_store(&mut self, mut input: BitVec, shift_num: usize){
+    fn shift_and_store(&mut self, mut input: MyBitVec, shift_num: usize){
         //self.ShiftsStore.insert(0, input.clone()); //u0=x
         for i in 1..shift_num+1 {// shift shift_num次，每次都存一下
             input = self.rightshift1(input);
             self.u_store.insert(i, input.clone());}
     }
-    pub fn get_ui(&self, shift_index: usize) -> BitVec{self.u_store.get(&shift_index).unwrap().clone()}
-    pub fn get_vi(&self, shift_index: usize) -> BitVec{self.v_store.get(&shift_index).unwrap().clone()}    
-    pub fn get_rdrelui(&self, random_index: usize) -> BitVec{self.r_drelu_store.get(&random_index).unwrap().clone()}
-    pub fn get_wi(&self, shift_index: usize) -> BitVec{self.w_store.get(&shift_index).unwrap().clone()}
-    pub fn get_wstore(&self) -> HashMap<usize, BitVec>{self.w_store.clone()}
+    pub fn get_ui(&self, shift_index: usize) -> MyBitVec{self.u_store.get(&shift_index).unwrap().clone()}
+    pub fn get_vi(&self, shift_index: usize) -> MyBitVec{self.v_store.get(&shift_index).unwrap().clone()}    
+    pub fn get_rdrelui(&self, random_index: usize) -> MyBitVec{self.r_drelu_store.get(&random_index).unwrap().clone()}
+    pub fn get_wi(&self, shift_index: usize) -> MyBitVec{self.w_store.get(&shift_index).unwrap().clone()}
+    pub fn get_wstore(&self) -> HashMap<usize, MyBitVec>{self.w_store.clone()}
     //0:[a] 1:[b] 2:[c] 3:[d] 7:d_receive 8:e 9:DReLu(x)'
     pub fn gen_abc(&mut self){
         if self.party_id ==0{        
@@ -146,17 +145,17 @@ impl BicopterParty {
         let _d = bitvec_sub(&self.x_share, &self.abc_store.get(&0).unwrap().clone());
         self.abc_store.insert(3, _d);
     }
-    pub fn get_d(&self) -> BitVec{self.abc_store.get(&3).unwrap().clone()}
-    pub fn get_relu(&self) -> BitVec{self.abc_store.get(&10).unwrap().clone()}
-    pub fn receive_d(&mut self, _d_in: BitVec) {self.abc_store.insert(7, _d_in);}
-    pub fn receive_c(&mut self, _c_in: BitVec) {self.abc_store.insert(2, _c_in);}
-    pub fn receive_e(&mut self, e_in: BitVec) {self.abc_store.insert(8, e_in);}
+    pub fn get_d(&self) -> MyBitVec{self.abc_store.get(&3).unwrap().clone()}
+    pub fn get_relu(&self) -> MyBitVec{self.abc_store.get(&10).unwrap().clone()}
+    pub fn receive_d(&mut self, _d_in: MyBitVec) {self.abc_store.insert(7, _d_in);}
+    pub fn receive_c(&mut self, _c_in: MyBitVec) {self.abc_store.insert(2, _c_in);}
+    pub fn receive_e(&mut self, e_in: MyBitVec) {self.abc_store.insert(8, e_in);}
     //0:[a] 1:[b] 2:[c] 3:[d] 7:d_receive 8:e 9:DReLu(x)'
-    pub fn receive_abc(&mut self, abc_in: BitVec, index: usize){self.abc_store.insert(index, abc_in);}
-    pub fn get_abc(&self, index: usize) -> BitVec{self.abc_store.get(&index).unwrap().clone()}
+    pub fn receive_abc(&mut self, abc_in: MyBitVec, index: usize){self.abc_store.insert(index, abc_in);}
+    pub fn get_abc(&self, index: usize) -> MyBitVec{self.abc_store.get(&index).unwrap().clone()}
 
     //0:[a] 1:[b] 2:[c] 3:[d] 7:d_receive 8:e 9:DReLu(x)'
-    pub fn compute_ReLU(&mut self){
+    pub fn compute_relu(&mut self){
         //relu = (1-2t)
         let t_vec = signtrue_tobitvec(false, self.t) ;
         let d = bitvec_add(&self.abc_store.get(&3).unwrap().clone(), &self.w_store.get(&7).unwrap().clone());
@@ -185,9 +184,9 @@ impl BicopterParty {
 
 pub struct BicopterParty2 {
     party_id: u8,
-    w_store0: HashMap<usize, BitVec>,
-    w_store1: HashMap<usize, BitVec>,
-    abc_store: HashMap<usize, BitVec>,
+    w_store0: HashMap<usize, MyBitVec>,
+    w_store1: HashMap<usize, MyBitVec>,
+    abc_store: HashMap<usize, MyBitVec>,
     rng: (ChaChaRng, ChaChaRng),
 }
 impl BicopterParty2 {
@@ -202,14 +201,14 @@ impl BicopterParty2 {
         }}
     pub fn get_partyid(&self) -> u8 {self.party_id}
     //接收w0 w1
-    pub fn receive_w0(&mut self, w0_in: HashMap<usize, BitVec>){self.w_store0 = w0_in;}
-    pub fn receive_w1(&mut self, w1_in: HashMap<usize, BitVec>){self.w_store1 = w1_in;}
-    pub fn get_wstore0i(&self, shift_index: usize) -> BitVec{self.w_store0.get(&shift_index).unwrap().clone()}
-    pub fn get_wstore1i(&self, shift_index: usize) -> BitVec{self.w_store1.get(&shift_index).unwrap().clone()}
-    pub fn get_wstore0(&self) -> HashMap<usize, BitVec>{self.w_store0.clone()}
-    pub fn get_wstore1(&self) -> HashMap<usize, BitVec>{self.w_store1.clone()}
+    pub fn receive_w0(&mut self, w0_in: HashMap<usize, MyBitVec>){self.w_store0 = w0_in;}
+    pub fn receive_w1(&mut self, w1_in: HashMap<usize, MyBitVec>){self.w_store1 = w1_in;}
+    pub fn get_wstore0i(&self, shift_index: usize) -> MyBitVec{self.w_store0.get(&shift_index).unwrap().clone()}
+    pub fn get_wstore1i(&self, shift_index: usize) -> MyBitVec{self.w_store1.get(&shift_index).unwrap().clone()}
+    pub fn get_wstore0(&self) -> HashMap<usize, MyBitVec>{self.w_store0.clone()}
+    pub fn get_wstore1(&self) -> HashMap<usize, MyBitVec>{self.w_store1.clone()}
     //计算并检查w中是否有0
-    pub fn check_w(&mut self, lx: usize) ->BitVec {
+    pub fn check_w(&mut self, lx: usize) ->MyBitVec {
         let mut xorsharing_generator = XorSharing::default();
         for i in 0..lx+2 {
             let party0_wi = self.get_wstore0i(i);
@@ -234,9 +233,9 @@ impl BicopterParty2 {
         };
         let rand_bits: Vec<BitStorage>= (0..1).map(|_| rng_to_use.gen_range(1..BitStorage::MAX)).collect();  //生成随机比特（这样比较慢，之后改成rand::distributions::Uniform）
         rand_bits}
-    fn gen_randombitvec(&mut self, rng_id: usize) -> BitVec{
+    fn gen_randombitvec(&mut self, rng_id: usize) -> MyBitVec{
         let rand_bits=self.gen_randomvec(rng_id);  //生成随机比特（这样比较慢，之后改成rand::distributions::Uniform）
-        let rand_bits_vec = BitVec::from_vec(rand_bits); //转成BitVec
+        let rand_bits_vec = MyBitVec::from_vec(rand_bits); //转成BitVec
         rand_bits_vec}
 
 
@@ -266,9 +265,9 @@ impl BicopterParty2 {
         self.abc_store.insert(8, e);
     }
     //0:a0 1:b0 2:c0 3:d0 4:a1 5:b1 6:c1 7:d1 8:e 9:DReLu(x)'
-    pub fn get_abc(&self, index: usize) -> BitVec{self.abc_store.get(&index).unwrap().clone()}
-    pub fn get_e(&self) -> BitVec{self.abc_store.get(&8).unwrap().clone()}
-    pub fn get_c1(&self) -> BitVec{self.abc_store.get(&6).unwrap().clone()}
+    pub fn get_abc(&self, index: usize) -> MyBitVec{self.abc_store.get(&index).unwrap().clone()}
+    pub fn get_e(&self) -> MyBitVec{self.abc_store.get(&8).unwrap().clone()}
+    pub fn get_c1(&self) -> MyBitVec{self.abc_store.get(&6).unwrap().clone()}
 }
 
 

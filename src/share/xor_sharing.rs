@@ -1,4 +1,4 @@
-use crate::share::{BitStorage, BitVec, Sharing};
+use crate::share::{BitStorage, MyBitVec, Sharing};
 use rand::Rng;
 use rand_chacha::ChaChaRng;
 use rand_chacha::rand_core::SeedableRng;
@@ -19,11 +19,11 @@ impl XorSharing {
 
 impl Sharing for XorSharing{
     type Plain = bool; //这个没用到
-    type ShareType = BitVec;
+    type ShareType = MyBitVec;
     //利用随机数生成share
     fn share(&mut self, input: Self::ShareType) -> [Self::ShareType; 2] {
         let rand_bits: Vec<BitStorage>= (0..1).map(|_| self.rng.gen_range(0..BitStorage::MAX)).collect();  //生成随机比特（这样比较慢，之后改成rand::distributions::Uniform）
-        let rand_bits_vec = BitVec::from_vec(rand_bits); //转成BitVec
+        let rand_bits_vec = MyBitVec::from_vec(rand_bits); //转成BitVec
         let masked_input = input ^ &rand_bits_vec;
         [rand_bits_vec, masked_input]
     }
@@ -44,7 +44,7 @@ fn test_xor_share() {
     let plaintext: Vec<BitStorage> = (0..1).map(|_| rng.gen_range(0..palintex_max)).collect(); //随机生成明文bit串
     //et plaintext: Vec<BitStorage> = vec![storageMAX] ; //明文
     println!("plaintext: \n {:?}", plaintext);
-    let plain_vex = BitVec::from_vec(plaintext);
+    let plain_vex = MyBitVec::from_vec(plaintext);
     println!("plain_vex: \n {}", plain_vex);
 
     let mut xorsharing_generator = XorSharing::default();

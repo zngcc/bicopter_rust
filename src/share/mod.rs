@@ -8,8 +8,8 @@ pub mod xor_sharing;
 //定义Bitvec数据类型，MSB
 pub type BitStorage = u64;
 pub const CONST_P: u128 = 2u128.pow(64);
-pub type BitSlice<T = BitStorage> = bitvec::slice::BitSlice<T,Msb0>;
-pub type BitVec<T = BitStorage> = bitvec::vec::BitVec<T,Msb0>;
+pub type MyBitSlice<T = BitStorage> = bitvec::slice::BitSlice<T,Msb0>;
+pub type MyBitVec<T = BitStorage> = bitvec::vec::BitVec<T,Msb0>;
 
 //从Flute抄几个trait
 pub trait Gate: Clone + Hash + Ord + PartialEq + Eq + Send + Sync + Debug + 'static {
@@ -45,17 +45,17 @@ pub trait ShareStorage<Share>:
     }
 }
 
-impl ShareStorage<bool> for BitVec {
+impl ShareStorage<bool> for MyBitVec {
     fn len(&self) -> usize {
-        BitVec::len(self)
+        MyBitVec::len(self)
     }
 
     fn repeat(val: bool, len: usize) -> Self {
-        BitVec::repeat(val, len)
+        MyBitVec::repeat(val, len)
     }
 
     fn set(&mut self, idx: usize, val: bool) {
-        BitSlice::set(self, idx, val)
+        MyBitSlice::set(self, idx, val)
     }
 
     fn get(&self, idx: usize) -> bool {
@@ -78,7 +78,7 @@ pub trait Sharing {
 fn test_bit_vector() { //每个bit都存成u8的vec
     let plaintext: Vec<u8> =vec![0,1,1,0,1,1,0,1];
     //输入1时，MSB会输出0 0 0 0 0 0 0 1， LSB会输出1 0 0 0 0 0 0 0
-    let mut plain_vex = BitVec::from_vec(plaintext);
+    let mut plain_vex = MyBitVec::from_vec(plaintext);
     print!("{}, {}", plain_vex, plain_vex.len()); //长度为64
     plain_vex.push(true);
     print!("{}, {}", plain_vex, plain_vex.len());
