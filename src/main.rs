@@ -15,8 +15,8 @@ fn main() {
 
     println!("正数?: {} 原码：{:?} 补码：{:?}", !neg, sign_trueformx.get_trueform(),  signtrueform_to_complement(&sign_trueformx)); //符号 原码 补码
     let plain_vex = signtrueform_tobitvec(&sign_trueformx);
-    println!("true_vec: \n {}", MyBitVec::from_vec(vec!{sign_trueformx.get_trueform()})); //原码对应的bitvec
-    println!("comp_vex: \n {}", plain_vex);        //补码对应的bitvec
+    println!("true_vec:\n{:?}", MyBitVec::from_vec(vec!{sign_trueformx.get_trueform()})); //原码对应的bitvec
+    println!("comp_vex:\n{:?}", plain_vex);        //补码对应的bitvec
 
     let randseed01: [u8; 32] = [1u8;32];
     let randseed02: [u8; 32] = [2u8;32];
@@ -27,12 +27,11 @@ fn main() {
     let mut party2 = BicopterParty2::new(randseed02,randseed12);
 
 //DRelu
-    let [rand_bits_vec, masked_input] = addsharing_generator.share(plain_vex);
+    let [rand_bits_vec, masked_input] = addsharing_generator.share(plain_vex.clone());
     party0.init_u_v(rand_bits_vec, lx);
     party1.init_u_v(masked_input,lx);
     println!("生成u v w");
 
-    
     party2.receive_w0(party0.get_wstore());
     party2.receive_w1(party1.get_wstore());
     println!("Party2接收w");
@@ -64,9 +63,9 @@ fn main() {
     party1.compute_relu();
     let relu0 = party0.get_relu();
     let relu1 = party1.get_relu();
+    //println!("{:?}\n{:?}\n", relu0,relu1);
     let reconstructed_relu = addsharing_generator.reconstruct([relu0, relu1]);
     println!("ReLu(x): \n{:?}",  reconstructed_relu);
-
     
 }
 
