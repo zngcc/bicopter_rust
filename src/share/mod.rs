@@ -3,6 +3,7 @@ use bitvec;
 use std::fmt::Debug;
 use std::hash::Hash;
 pub mod xor_sharing;
+pub mod add_sharing;
 //pub(crate) mod util;
 
 //定义Bitvec数据类型，MSB

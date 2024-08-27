@@ -1,5 +1,5 @@
 use bicopter::share::{MyBitVec,Sharing};
-use bicopter::share::xor_sharing::XorSharing;
+use bicopter::share::add_sharing::AddSharing;
 use bicopter::utils::{gen_random_u64_complement_vec,signtrueform_tobitvec,signtrueform_to_complement,bitvec_tosigntrueform};
 use bicopter::party::{BicopterParty, BicopterParty2};
 
@@ -15,19 +15,19 @@ fn main() {
 
     println!("正数?: {} 原码：{:?} 补码：{:?}", !neg, sign_trueformx.get_trueform(),  signtrueform_to_complement(&sign_trueformx)); //符号 原码 补码
     let plain_vex = signtrueform_tobitvec(&sign_trueformx);
-    println!("x_vec: \n {}", MyBitVec::from_vec(vec!{sign_trueformx.get_trueform()})); //原码对应的bitvec
-    println!("plain_vex: \n {}", plain_vex);        //补码对应的bitvec
+    println!("true_vec: \n {}", MyBitVec::from_vec(vec!{sign_trueformx.get_trueform()})); //原码对应的bitvec
+    println!("comp_vex: \n {}", plain_vex);        //补码对应的bitvec
 
     let randseed01: [u8; 32] = [1u8;32];
     let randseed02: [u8; 32] = [2u8;32];
     let randseed12: [u8; 32] = [12u8;32];
-    let mut xorsharing_generator = XorSharing::default();
+    let mut addsharing_generator = AddSharing::default();
     let mut party0 = BicopterParty::new(0,randseed01,randseed02);
     let mut party1 = BicopterParty::new(1,randseed01,randseed12);
     let mut party2 = BicopterParty2::new(randseed02,randseed12);
 
 //DRelu
-    let [rand_bits_vec, masked_input] = xorsharing_generator.share(plain_vex);
+    let [rand_bits_vec, masked_input] = addsharing_generator.share(plain_vex);
     party0.init_u_v(rand_bits_vec, lx);
     party1.init_u_v(masked_input,lx);
     println!("生成u v w");
@@ -64,7 +64,7 @@ fn main() {
     party1.compute_relu();
     let relu0 = party0.get_relu();
     let relu1 = party1.get_relu();
-    let reconstructed_relu = xorsharing_generator.reconstruct([relu0, relu1]);
+    let reconstructed_relu = addsharing_generator.reconstruct([relu0, relu1]);
     println!("ReLu(x): \n{:?}",  reconstructed_relu);
 
     

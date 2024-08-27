@@ -81,11 +81,11 @@ pub fn u64_tosigntrue(complement: BitStorage)->SignTrueform{
 }
 
 //生成随机BitStorage(u64)格式的原码x和补码complement
-pub fn gen_random_u64_complement_vec(lx: usize, neg: bool)->SignTrueform{
+pub fn gen_random_u64_complement_vec(lx: usize, sign: bool)->SignTrueform{
     let mut rng = ChaChaRng::from_entropy(); 
     let x_max = 2u64.pow(lx.try_into().unwrap()); //这里是x的最大值，取决于lx的大小,暂且认为不大于64位
     let x= rng.gen_range(0..x_max);
-    let sign_truex: SignTrueform = SignTrueform::new(neg, x );
+    let sign_truex: SignTrueform = SignTrueform::new(sign, x );
     sign_truex
 }
 

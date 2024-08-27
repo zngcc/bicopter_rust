@@ -7,7 +7,7 @@ use crate::utils::{bitvec_tosigntrueform, signtrue_tobitvec};
 use crate::utils::bitvec_arithmetic::{bitvec_mult,bitvec_add,bitvec_sub};
 use shuffle::shuffler::Shuffler;
 use shuffle::irs::Irs;
-use crate::share::xor_sharing::XorSharing;
+use crate::share::add_sharing::AddSharing;
 
 //Party 0 or Party 1
 pub struct BicopterParty {
@@ -209,11 +209,11 @@ impl BicopterParty2 {
     pub fn get_wstore1(&self) -> HashMap<usize, MyBitVec>{self.w_store1.clone()}
     //计算并检查w中是否有0
     pub fn check_w(&mut self, lx: usize) ->MyBitVec {
-        let mut xorsharing_generator = XorSharing::default();
+        let mut addsharing_generator = AddSharing::default();
         for i in 0..lx+2 {
             let party0_wi = self.get_wstore0i(i);
             let party1_wi = self.get_wstore1i(i);
-            let reconstructed_wi =bitvec_tosigntrueform( &xorsharing_generator.reconstruct([party0_wi, party1_wi]));
+            let reconstructed_wi =bitvec_tosigntrueform( &addsharing_generator.reconstruct([party0_wi, party1_wi]));
             if reconstructed_wi.get_trueform() == 0 {
                 let drelu_prime = signtrue_tobitvec(false,1);
                 self.abc_store.insert(9, drelu_prime.clone());
