@@ -8,7 +8,7 @@ pub mod add_sharing;
 
 //定义Bitvec数据类型，MSB
 pub type BitStorage = u64;
-pub const CONST_P: u128 = 2u128.pow(64);
+pub const CONST_P_64: u128 = 2u128.pow(64);
 pub type MyBitSlice<T = BitStorage> = bitvec::slice::BitSlice<T,Msb0>;
 pub type MyBitVec<T = BitStorage> = bitvec::vec::BitVec<T,Msb0>;
 

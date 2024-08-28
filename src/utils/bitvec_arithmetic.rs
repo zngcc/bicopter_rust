@@ -1,4 +1,4 @@
-use crate::share::{BitStorage, MyBitVec,CONST_P};
+use crate::share::{BitStorage, MyBitVec,CONST_P_64};
 use crate::utils::{SignTrueform,signtrue_tobitvec};
 //use std::ops::{Add, Mul};
 
@@ -36,7 +36,7 @@ pub fn bitvec_add(a: &MyBitVec, b: &MyBitVec) -> MyBitVec {
 
 //SignTrueform(符号和源码)格式的补码乘法
 pub fn signtrueform_mult(signtrueform1: & SignTrueform, signtrueform2: &SignTrueform)->SignTrueform{
-    let product_abs = ((signtrueform1.trueform as u128) * (signtrueform2.trueform as u128)) % CONST_P;
+    let product_abs = ((signtrueform1.trueform as u128) * (signtrueform2.trueform as u128)) % CONST_P_64;
     let sign = signtrueform1.sign ^ signtrueform2.sign;
     let result = SignTrueform::new(sign, product_abs as BitStorage);
     result
@@ -115,11 +115,11 @@ pub fn bitvec_mult(num1: &MyBitVec, num2: &MyBitVec) -> MyBitVec {
 #[test]
 fn test_mult(){
 
-    use crate::utils::{gen_random_u64_complement_vec, signtrueform_tobitvec, bitvec_tosigntrueform}; 
-    let sign_trueformx1 = gen_random_u64_complement_vec(32, true);
+    use crate::utils::{gen_random_u64_complement, signtrueform_tobitvec, bitvec_tosigntrueform}; 
+    let sign_trueformx1 = gen_random_u64_complement(32, true);
     let num1_vec = signtrueform_tobitvec(&sign_trueformx1);
     println!("num1: \n {:?} \n {:?}\n", sign_trueformx1,num1_vec);
-    let sign_trueformx2 = gen_random_u64_complement_vec(8, false);
+    let sign_trueformx2 = gen_random_u64_complement(8, false);
     let num2_vec = signtrueform_tobitvec(&sign_trueformx2);
     println!("num2: \n {:?} \n {:?}\n", sign_trueformx2,num2_vec);
     let result = bitvec_mult(& num1_vec,&num2_vec);

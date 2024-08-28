@@ -1,19 +1,21 @@
 use bicopter::share::{MyBitVec,Sharing};
 use bicopter::share::add_sharing::AddSharing;
-use bicopter::utils::{gen_random_u64_complement_vec,signtrueform_tobitvec,signtrueform_to_complement,bitvec_tosigntrueform};
+
+use bicopter::utils::{signtrueform_tobitvec,signtrueform_to_complement,bitvec_tosigntrueform};
 use bicopter::party::{BicopterParty, BicopterParty2};
 
 fn main() {
-    let (lx, neg) = (8, false); //lx和符号位
+    let (lx, neg) = (29, false); //lx和符号位
     
     //生成随机明文
-    let sign_trueformx = gen_random_u64_complement_vec(lx, neg);
+    use bicopter::utils::gen_random_u64_complement;
+    let sign_trueformx = gen_random_u64_complement(lx, neg);
+
     //或者自定明文
-    //use bicopter::utils::SignTrueform;
-    //let sign_trueformx = SignTrueform::new(neg, 15);
+    // use bicopter::utils::SignTrueform;
+    // let sign_trueformx = SignTrueform::new(neg, 42);
 
-
-    println!("正数?: {} 原码：{:?} 补码：{:?}", !neg, sign_trueformx.get_trueform(),  signtrueform_to_complement(&sign_trueformx)); //符号 原码 补码
+    println!("符号位: {:?} 原码：{:?} 补码：{:?}", sign_trueformx.get_sign(), sign_trueformx.get_trueform(),  signtrueform_to_complement(&sign_trueformx)); //符号 原码 补码
     let plain_vex = signtrueform_tobitvec(&sign_trueformx);
     println!("true_vec:\n{:?}", MyBitVec::from_vec(vec!{sign_trueformx.get_trueform()})); //原码对应的bitvec
     println!("comp_vex:\n{:?}", plain_vex);        //补码对应的bitvec
@@ -63,10 +65,38 @@ fn main() {
     party1.compute_relu();
     let relu0 = party0.get_relu();
     let relu1 = party1.get_relu();
-    //println!("{:?}\n{:?}\n", relu0,relu1);
     let reconstructed_relu = addsharing_generator.reconstruct([relu0, relu1]);
-    println!("ReLu(x): \n{:?}",  reconstructed_relu);
-    
+    println!("ReLu(x): \n{:?}\n",  reconstructed_relu);
+    // use bicopter::utils::bitvec_arithmetic::{bitvec_add, bitvec_mult};
+    // assert_eq!(reconstructed_relu, plain_vex);
+    // for i in 1..lx+1{
+    //     let u0 = party0.get_ui(i);
+    //     let u1 = party1.get_ui(i);
+    //     let v0 = party0.get_vi(i);
+    //     let v1 = party1.get_vi(i);
+    //     // println!("{}{:?}\n{:?}\n{:?}\n", i, u0, u1, bitvec_add(&u0, &u1));
+    //     // println!("{}{:?}\n{:?}\n{:?}\n", i, u0, u1, bitvec_add(&v0, &v1));
+        
+    //     // println!("{}{:?}", i, bitvec_add(&u0, &u1));
+    //     // println!("{}{:?}", i, bitvec_add(&v0, &v1));
+    //     // println!("\n")
+    // }
+    // for i in 0..lx+1{
+    //     let w0 = party0.get_wi(i);
+    //     let w1 = party1.get_wi(i);
+    //     let r0 = party0.get_rdrelui(i);
+    //     let r1 = party1.get_rdrelui(i);
+    //     let v0 = party0.get_vi(i);
+    //     let v1 = party1.get_vi(i);
+    //     assert_eq!(r0,r1);
+
+    //     // println!("{}{:?}\n{:?}\n{:?}\n", i, u0, u1, bitvec_add(&u0, &u1));
+    //     // println!("{}{:?}\n{:?}\n{:?}\n", i, u0, u1, bitvec_add(&v0, &v1));
+        
+    //     println!("{}\n{:?}\n{:?}\n{:?}\n", i, bitvec_add(&v0,&v1),bitvec_add(&bitvec_mult(&v0, &r0), &bitvec_mult(&v1, &r1)), bitvec_add(&w0, &w1));
+
+    // }
+
 }
 
 

@@ -1,13 +1,12 @@
-use crate::share::{BitStorage,MyBitVec,Sharing};
+use crate::share::{BitStorage,MyBitVec};
 use rand::Rng;
 use rand_chacha::ChaChaRng;
 use rand_chacha::rand_core::SeedableRng;
 use std::collections::HashMap;
 use crate::utils::{bitvec_tosigntrueform, signtrue_tobitvec};
-use crate::utils::bitvec_arithmetic::{bitvec_mult,bitvec_add,bitvec_sub};
+use crate::utils::bitvec_arithmetic::{bitvec_mult,bitvec_add,bitvec_sub, bitvec_opposite};
 use shuffle::shuffler::Shuffler;
 use shuffle::irs::Irs;
-use crate::share::add_sharing::AddSharing;
 
 //Party 0 or Party 1
 pub struct BicopterParty {
@@ -40,23 +39,64 @@ impl BicopterParty {
     //生成 u v 和 w
     pub fn init_u_v(&mut self, x_share: MyBitVec, lx: usize){
         self.x_share = x_share;
-        let xshare_signtrueform = bitvec_tosigntrueform(&self.x_share);
-        let (x_sign, x_trueform) = (xshare_signtrueform.get_sign().clone(), xshare_signtrueform.get_trueform().clone());
-
         let t = self.gen_randomvec(0)[0]%2;
-        //println!("t: {:?}", t);
-        let u_ = signtrue_tobitvec(if t == 0 { false } else { true }, 1) ;
-        let u_0 = signtrue_tobitvec(if t == 0 {x_sign} else {!x_sign}, x_trueform);
-        let v_ = bitvec_add( &bitvec_mult(&signtrue_tobitvec(false,3),&u_0),&signtrue_tobitvec(true,1));
+        //let t: u64 = 0;
+        //(-1)^t
+        let t_neg1 = signtrue_tobitvec(if t == 0 { false } else { true }, 1);
+        //random for generate t_share
+        let mut randnum_t = self.gen_randombitvec(0);
+        if self.party_id == 0 {
+            randnum_t = bitvec_opposite(&randnum_t);
+        }
+        let u_ = bitvec_add(&randnum_t, &t_neg1); 
+        let u_0 = bitvec_mult(&t_neg1, &self.x_share);
+        //
+        let v_ = bitvec_sub(
+            &bitvec_add(
+                &u_, 
+                &bitvec_mult(&signtrue_tobitvec(false,3),&u_0)
+            ),  
+            &signtrue_tobitvec(false,if self.party_id ==0 {1} else {0})
+        );
         self.v_store.insert(128, v_); //v*
         self.u_store.insert(128, u_); //u*
-        self.u_store.insert(0, u_0); //u0
+        self.u_store.insert(0, u_0.clone()); //u0
         self.abc_store.insert("t".to_string(), signtrue_tobitvec(false, t));
 
-        self.shift_and_store(self.x_share.clone(), lx);
+        self.shift_and_store(&self.x_share.clone(), lx);
         self.gen_drelu_randombitvecs(lx);
         self.gen_lxv(lx);
         self.gen_w(lx);
+    }
+    //右移一位
+    fn rightshift1(&self, mut input: MyBitVec)->MyBitVec{
+        if input.is_empty() {input}
+        else {
+        input.shift_right(1);
+        input.copy_within(1..2,0);
+        input} //开头补位 
+    }
+    fn rightshift_n_bit(&self, mut input: MyBitVec, shift_num: usize)->MyBitVec{
+        for _i in 0..shift_num {
+            input = self.rightshift1(input);
+        }
+        input
+    }
+    //移位shift_num次并存储在uStore中 
+    fn shift_and_store(&mut self, input: &MyBitVec, shift_num: usize){
+        //self.ShiftsStore.insert(0, input.clone()); //u0=x
+        if self.party_id ==0{
+            for i in 1..shift_num+1 {// shift shift_num次，每次都存一下
+                let mut input2 = input.clone();
+                input2 = self.rightshift_n_bit(input2,i);
+            //println!("{:?}{:?}{:?}", self.party_id, i, input2);
+                self.u_store.insert(i, input2.clone());}}
+        else{
+            for i in 1..shift_num+1 {
+                let mut input2 = bitvec_opposite(&input);
+                input2 = bitvec_opposite(&self.rightshift_n_bit(input2,i));
+            //println!("{:?}{:?}{:?}", self.party_id, i, input2);
+                self.u_store.insert(i, input2.clone());}}
     }
     //调用lx次gen_v，生成lx个vi (v1~vlx, 不包括v0和v*)
     fn gen_lxv(&mut self, lx: usize){
@@ -70,6 +110,7 @@ impl BicopterParty {
         for i in i_v..lx+1 {
             v_i = bitvec_add(&v_i, &self.u_store.get(&(i)).unwrap());
         }
+        v_i = bitvec_sub(&v_i, &signtrue_tobitvec(false, if self.party_id ==0 {1} else {0}));
         self.v_store.insert(i_v, v_i);
     }
     //生成w0~wlx和w*
@@ -82,11 +123,15 @@ impl BicopterParty {
         }
         //irs.shuffle(&mut shuffled_index, &mut self.Rng);
         for i in 0..lx+1 {
-            let w_i =bitvec_mult(&self.r_drelu_store.get(&(i)).unwrap(), &self.v_store.get(&(i)).unwrap());
+            let w_i =bitvec_mult(&self.get_rdrelui(i), &self.get_vi(i));
             self.w_store.insert(shuffled_index[i], w_i);
+            // self.w_store.insert(i, w_i);
         }
         //w*
-        self.w_store.insert(shuffled_index[lx+1], bitvec_mult(&self.r_drelu_store.get(&128).unwrap(), &self.v_store.get(&128).unwrap()));
+        self.w_store.insert(shuffled_index[lx+1], bitvec_mult(&self.get_rdrelui(128), &self.get_vi(128)));
+        // self.w_store.insert(lx+1, bitvec_mult(&self.get_rdrelui(128), &self.get_vi(128)));
+        println!("shuffled_index: {:?}",shuffled_index);
+        //最后需要按键排序一下，这里没写
     }
     //生成一个随机数r 并转换成BitVec
     fn gen_randomvec(&mut self, rng_id: usize) -> Vec<BitStorage>{
@@ -111,20 +156,7 @@ impl BicopterParty {
         self.r_drelu_store.insert(128, rand_bits); //r*
     }
 
-    //右移一位
-    pub fn rightshift1(&mut self, mut input:  MyBitVec)-> MyBitVec{
-        if input.is_empty() {return input; }
-        input.shift_right(1);
-        input.copy_within(1 .. 2,0); //开头补位
-        input
-    }
-    //移位shift_num次并存储在uStore中 
-    fn shift_and_store(&mut self, mut input: MyBitVec, shift_num: usize){
-        //self.ShiftsStore.insert(0, input.clone()); //u0=x
-        for i in 1..shift_num+1 {// shift shift_num次，每次都存一下
-            input = self.rightshift1(input);
-            self.u_store.insert(i, input.clone());}
-    }
+
     pub fn get_ui(&self, shift_index: usize) -> MyBitVec{self.u_store.get(&shift_index).unwrap().clone()}
     pub fn get_vi(&self, shift_index: usize) -> MyBitVec{self.v_store.get(&shift_index).unwrap().clone()}    
     pub fn get_rdrelui(&self, random_index: usize) -> MyBitVec{self.r_drelu_store.get(&random_index).unwrap().clone()}
@@ -214,11 +246,10 @@ impl BicopterParty2 {
     pub fn get_wstore1(&self) -> HashMap<usize, MyBitVec>{self.w_store1.clone()}
     //计算并检查w中是否有0
     pub fn check_w(&mut self, lx: usize) ->MyBitVec {
-        let mut addsharing_generator = AddSharing::default();
         for i in 0..lx+2 {
             let party0_wi = self.get_wstore0i(i);
             let party1_wi = self.get_wstore1i(i);
-            let reconstructed_wi =bitvec_tosigntrueform( &addsharing_generator.reconstruct([party0_wi, party1_wi]));
+            let reconstructed_wi =bitvec_tosigntrueform( &bitvec_add(&party0_wi, &party1_wi));
             if reconstructed_wi.get_trueform() == 0 {
                 let drelu_p = signtrue_tobitvec(false,0);
                 self.abc_store.insert("drelu_p".to_string(), drelu_p.clone());
@@ -285,8 +316,54 @@ impl BicopterParty2 {
 
 
 #[test]
-fn test_relu(){
+fn trunc_and_reconstruct_test() {
+    use crate::share::Sharing;
+    use crate::utils::{signtrueform_tobitvec,signtrueform_to_complement,gen_random_u64_complement};
+    use crate::share::add_sharing::AddSharing;
 
+    let (lx, neg) = (8, false); //lx和符号位
+    
+    //生成随机明文
+    
+    let sign_trueformx = gen_random_u64_complement(lx, neg);
+    //或者自定明文
+    // use crate::utils::{SignTrueform
+    // let sign_trueformx = SignTrueform::new(neg, 42);
+
+    //错误位置 42 19 41 26 70 43 53 56
+    println!("符号位: {:?} 原码：{:?} 补码：{:?}", sign_trueformx.get_sign(), sign_trueformx.get_trueform(),  signtrueform_to_complement(&sign_trueformx)); //符号 原码 补码
+    let plain_vex = signtrueform_tobitvec(&sign_trueformx);
+    println!("true_vec:\n{:?}", MyBitVec::from_vec(vec!{sign_trueformx.get_trueform()})); //原码对应的bitvec
+    println!("comp_vex:\n{:?}", plain_vex);        //补码对应的bitvec
+
+    let randseed01: [u8; 32] = [1u8;32];
+    let randseed02: [u8; 32] = [2u8;32];
+    let randseed12: [u8; 32] = [12u8;32];
+    let mut addsharing_generator = AddSharing::default();
+    let mut party0 = BicopterParty::new(0,randseed01,randseed02);
+    let mut party1 = BicopterParty::new(1,randseed01,randseed12);
+
+//DRelu
+    let [rand_bits_vec, masked_input] = addsharing_generator.share(plain_vex.clone());
+    //println!("rand_bits_vec: \n {}; \nmasked_input: \n {}", rand_bits_vec, masked_input);
+
+
+    party0.shift_and_store(&rand_bits_vec, lx);
+    party1.shift_and_store(&masked_input,lx);
+
+    for i in 1..lx+1{
+    print!("shift {} bits, ", i);
+    let party0_rightshift = party0.get_ui(i);
+    let party1_rightshift = party1.get_ui(i);
+
+    let reconstructed_input = addsharing_generator.reconstruct([party0_rightshift, party1_rightshift]);
+    println!("reconstructed_vec: \n {}", reconstructed_input);
+
+    let v = bitvec_tosigntrueform(&reconstructed_input);
+    println!("reconstructed_input: \n {:?}", v);
+
+
+    }
 
 }
 
@@ -425,46 +502,7 @@ fn test_shffle(){
     irs.shuffle(&mut input, &mut rng);
     println!("{:?}{:?}", input, input[1]);
 }
-#[test]
-fn trunc_and_reconstruct_test() {
-    use crate::share::xor_sharing::XorSharing;
-    use crate::utils::gen_random_u64_complement_vec;
 
-    let (lx, neg) = (6, true); //明文几位
-    let (x, plaintext) = gen_random_u64_complement_vec(lx, neg);
-
-    println!("plaintext: \n {:?} {} {:?}", x, neg, plaintext);
-    let plain_vex = BitVec::from_vec(plaintext);
-    println!("x: \n {}", BitVec::from_vec(vec!{x}));
-    println!("plain_vex: \n {}", plain_vex);
-
-    let randseed: [u8; 32] = [0u8;32];
-    let mut xorsharing_generator = XorSharing::default();
-    let mut party0 = BicopterParty::new(0,randseed);
-    let mut party1 = BicopterParty::new(1,randseed);
-
-    let [rand_bits_vec, masked_input] = xorsharing_generator.share(plain_vex);
-    //println!("rand_bits_vec: \n {}; \nmasked_input: \n {}", rand_bits_vec, masked_input);
-
-
-    party0.shift_and_store(rand_bits_vec, lx);
-    party1.shift_and_store(masked_input,lx);
-
-    for i in 1..lx+1{
-    print!("shift {} bits, ", i);
-    let party0_rightshift = party0.get_ui(i);
-    let party1_rightshift = party1.get_ui(i);
-
-    let reconstructed_input = xorsharing_generator.reconstruct([party0_rightshift, party1_rightshift]);
-    println!("reconstructed_vec: \n {}", reconstructed_input);
-
-    let v = bitvec_tosigntrueform(&reconstructed_input);
-    println!("reconstructed_input: \n {:?}", v);
-
-
-    }
-
-}
 
 #[test]
 fn random_store_test() {
