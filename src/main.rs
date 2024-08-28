@@ -67,35 +67,6 @@ fn main() {
     let relu1 = party1.get_relu();
     let reconstructed_relu = addsharing_generator.reconstruct([relu0, relu1]);
     println!("ReLu(x): \n{:?}\n",  reconstructed_relu);
-    // use bicopter::utils::bitvec_arithmetic::{bitvec_add, bitvec_mult};
-    // assert_eq!(reconstructed_relu, plain_vex);
-    // for i in 1..lx+1{
-    //     let u0 = party0.get_ui(i);
-    //     let u1 = party1.get_ui(i);
-    //     let v0 = party0.get_vi(i);
-    //     let v1 = party1.get_vi(i);
-    //     // println!("{}{:?}\n{:?}\n{:?}\n", i, u0, u1, bitvec_add(&u0, &u1));
-    //     // println!("{}{:?}\n{:?}\n{:?}\n", i, u0, u1, bitvec_add(&v0, &v1));
-        
-    //     // println!("{}{:?}", i, bitvec_add(&u0, &u1));
-    //     // println!("{}{:?}", i, bitvec_add(&v0, &v1));
-    //     // println!("\n")
-    // }
-    // for i in 0..lx+1{
-    //     let w0 = party0.get_wi(i);
-    //     let w1 = party1.get_wi(i);
-    //     let r0 = party0.get_rdrelui(i);
-    //     let r1 = party1.get_rdrelui(i);
-    //     let v0 = party0.get_vi(i);
-    //     let v1 = party1.get_vi(i);
-    //     assert_eq!(r0,r1);
-
-    //     // println!("{}{:?}\n{:?}\n{:?}\n", i, u0, u1, bitvec_add(&u0, &u1));
-    //     // println!("{}{:?}\n{:?}\n{:?}\n", i, u0, u1, bitvec_add(&v0, &v1));
-        
-    //     println!("{}\n{:?}\n{:?}\n{:?}\n", i, bitvec_add(&v0,&v1),bitvec_add(&bitvec_mult(&v0, &r0), &bitvec_mult(&v1, &r1)), bitvec_add(&w0, &w1));
-
-    // }
 
 }
 
